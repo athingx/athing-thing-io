@@ -1,2 +1,2 @@
 # athing-thing-io
-athing I/O component
+athing thing component: I/O
