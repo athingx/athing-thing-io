@@ -2,6 +2,7 @@ package io.github.athingx.athing.thing.io.raspberry.pi;
 
 import com.pi4j.Pi4J;
 import com.pi4j.context.Context;
+import io.github.athingx.athing.standard.thing.Thing;
 import io.github.athingx.athing.standard.thing.ThingLifeCycle;
 import io.github.athingx.athing.thing.io.ThingIoCom;
 import io.github.athingx.athing.thing.io.raspberry.pi.channel.SerialChannelImpl;
@@ -36,8 +37,8 @@ public class ThingIoComImpl implements ThingIoCom, ThingLifeCycle {
     }
 
     @Override
-    public void onDestroyed() {
-        pi4j.shutdown();
+    public void onLoaded(Thing thing) {
+        thing.getDestroyFuture().onDone(future -> pi4j.shutdown());
     }
 
 }
