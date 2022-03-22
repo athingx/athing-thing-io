@@ -11,27 +11,8 @@
     <artifactId>thing-io-raspberry-pi</artifactId>
     <name>${project.artifactId}</name>
 
-    <properties>
-        <pi4j.version>2.1.1</pi4j.version>
-    </properties>
-
     <build>
         <finalName>${project.name}-${project.version}</finalName>
-        <resources>
-            <resource>
-                <directory>src/main/resources</directory>
-                <filtering>true</filtering>
-                <includes>
-                    <include>io/github/athingx/athing/thing/io/raspberry/pi/thing-boot.properties</include>
-                </includes>
-            </resource>
-            <resource>
-                <directory>src/main/resources</directory>
-                <includes>
-                    <include>META-INF/**/*</include>
-                </includes>
-            </resource>
-        </resources>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -88,22 +69,10 @@
 
         <!-- include Pi4J Core -->
         <dependency>
-            <groupId>com.pi4j</groupId>
-            <artifactId>pi4j-core</artifactId>
-            <version>${pi4j.version}</version>
+            <groupId>com.fazecast</groupId>
+            <artifactId>jSerialComm</artifactId>
+            <version>2.9.1</version>
         </dependency>
-
-        <!-- include Pi4J Plugins (Platforms and I/O Providers) -->
-        <dependency>
-            <groupId>com.pi4j</groupId>
-            <artifactId>pi4j-plugin-raspberrypi</artifactId>
-            <version>${pi4j.version}</version>
-        </dependency>
-<!--        <dependency>-->
-<!--            <groupId>com.pi4j</groupId>-->
-<!--            <artifactId>pi4j-plugin-pigpio</artifactId>-->
-<!--            <version>${pi4j.version}</version>-->
-<!--        </dependency>-->
 
         <!-- 测试用 -->
         <dependency>

@@ -4,7 +4,6 @@ import io.github.athingx.athing.standard.component.ThingCom;
 import io.github.athingx.athing.standard.thing.boot.ThingBoot;
 import io.github.athingx.athing.standard.thing.boot.ThingBootArgument;
 
-import java.io.InputStream;
 import java.util.Properties;
 
 public class ThingIoBoot implements ThingBoot {
@@ -18,15 +17,10 @@ public class ThingIoBoot implements ThingBoot {
 
     @Override
     public Properties getProperties() {
-        final Properties prop = ThingBoot.super.getProperties();
-        try (final InputStream in = ThingIoBoot.class.getResourceAsStream("/io/github/athingx/athing/thing/io/raspberry/pi/thing-boot.properties")) {
-            if (null != in) {
-                prop.load(in);
-            }
-        } catch (Exception cause) {
-            // ignore...
-        }
-        return prop;
+        return new Properties(){{
+            put(PROP_GROUP, "io.github.athingx.athing.thing.io");
+            put(PROP_ARTIFACT, "thing-io-raspberry-pi");
+        }};
     }
 
 }

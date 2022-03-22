@@ -1,9 +1,9 @@
 package io.github.athingx.athing.thing.io.raspberry.pi.channel;
 
-import com.pi4j.context.Context;
-import com.pi4j.io.serial.*;
+import com.fazecast.jSerialComm.SerialPort;
 import io.github.athingx.athing.thing.io.channel.SerialChannel;
 import io.github.athingx.athing.thing.io.source.SerialSource;
+import io.github.athingx.athing.thing.io.source.Source;
 
 import java.io.EOFException;
 import java.io.IOException;
@@ -15,52 +15,63 @@ import java.nio.ByteBuffer;
 public class SerialChannelImpl implements SerialChannel {
 
     private final String _string;
-    private final Serial serial;
+    private final SerialPort serial;
 
-    public SerialChannelImpl(Context pi4j, SerialSource source) {
-        this.serial = pi4j.create(config(pi4j, source));
+    public SerialChannelImpl(SerialSource source) throws IOException {
         this._string = "%s/channel".formatted(source.getIdentity());
+        this.serial = openSerialPort(source);
     }
 
-    // PI4J串口配置
-    private SerialConfig config(Context pi4j, SerialSource source) {
+    private SerialPort openSerialPort(SerialSource source) throws IOException {
+        final SerialPort serial = SerialPort.getCommPort(source.getIdentity());
 
-        // builder for serial-config
-        final SerialConfigBuilder builder = SerialConfigBuilder.newInstance(pi4j)
-                .baud(source.getBaud())
-                .device(source.getDevice())
-                .name(source.getIdentity())
-                .description(source.toString());
+        // 设置波特率
+        serial.setBaudRate(source.getBaud());
 
-        // 映射数据位
+        // 设置数据位
         switch (source.getDataBits()) {
-            case BITS_5 -> builder.dataBits(5);
-            case BITS_6 -> builder.dataBits(6);
-            case BITS_7 -> builder.dataBits(7);
-            case BITS_8 -> builder.dataBits(8);
+            case BITS_5 -> serial.setNumDataBits(5);
+            case BITS_6 -> serial.setNumDataBits(6);
+            case BITS_7 -> serial.setNumDataBits(7);
+            case BITS_8 -> serial.setNumDataBits(8);
         }
 
-        // 映射停止位
+        // 设置停止位
         switch (source.getStopBits()) {
-            case BITS_1 -> builder.stopBits(1);
-            case BITS_2 -> builder.stopBits(2);
+            case BITS_1 -> serial.setNumStopBits(1);
+            case BITS_2 -> serial.setNumStopBits(2);
         }
 
-        // 映射校验位
-        switch (source.getParity()) {
-            case ODD -> builder.parity(Parity.ODD);
-            case EVEN -> builder.parity(Parity.EVEN);
-            case NONE -> builder.parity(Parity.NONE);
-        }
-
-        // 映射流控策略
+        // 设置流控
         switch (source.getFlowControl()) {
-            case HARDWARE -> builder.flowControl(FlowControl.HARDWARE);
-            case SOFTWARE -> builder.flowControl(FlowControl.SOFTWARE);
-            case NONE -> builder.flowControl(FlowControl.NONE);
+            case NONE -> serial.setFlowControl(SerialPort.FLOW_CONTROL_DISABLED);
+            case HARDWARE -> serial.setFlowControl(SerialPort.FLOW_CONTROL_DISABLED
+                    | SerialPort.FLOW_CONTROL_RTS_ENABLED
+                    | SerialPort.FLOW_CONTROL_CTS_ENABLED
+                    | SerialPort.FLOW_CONTROL_DSR_ENABLED
+                    | SerialPort.FLOW_CONTROL_DTR_ENABLED);
+            case SOFTWARE -> serial.setFlowControl(SerialPort.FLOW_CONTROL_DISABLED
+                    | SerialPort.FLOW_CONTROL_XONXOFF_IN_ENABLED
+                    | SerialPort.FLOW_CONTROL_XONXOFF_OUT_ENABLED);
         }
 
-        return builder.build();
+        // 设置校验位
+        switch (source.getParity()) {
+            case NONE -> serial.setParity(SerialPort.NO_PARITY);
+            case EVEN -> serial.setParity(SerialPort.EVEN_PARITY);
+            case ODD -> serial.setParity(SerialPort.ODD_PARITY);
+        }
+
+        // 打开串口
+        if (!serial.openPort()) {
+            throw new IOException("%s open failure, code=%d(%d)".formatted(
+                    this,
+                    serial.getLastErrorCode(),
+                    serial.getLastErrorLocation()
+            ));
+        }
+
+        return serial;
     }
 
     @Override
@@ -68,26 +79,24 @@ public class SerialChannelImpl implements SerialChannel {
         return _string;
     }
 
-    /*
-     * 检查：读/写长度不小于0，否则为I/O错误
-     */
-    private int checkLength(String action, int length) throws IOException {
-        if (length == -1) {
-            throw new EOFException("%s %s: EOF".formatted(this, action));
-        } else if (length < 0) {
-            throw new IOException("%s %s: %d".formatted(this, action, length));
+    @Override
+    public int read(ByteBuffer buffer) throws IOException {
+        final int length = serial.readBytes(buffer.array(), buffer.remaining(), buffer.arrayOffset());
+        if (-1 == length) {
+            throw new EOFException();
         }
+        buffer.position(buffer.position() + length);
         return length;
     }
 
     @Override
-    public int read(ByteBuffer buffer) throws IOException {
-        return checkLength("read", serial.read(buffer));
-    }
-
-    @Override
     public int write(ByteBuffer buffer) throws IOException {
-        return checkLength("write", serial.write(buffer));
+        final int length = serial.writeBytes(buffer.array(), buffer.remaining(), buffer.arrayOffset());
+        if (-1 == length) {
+            throw new EOFException();
+        }
+        buffer.position(buffer.position() + length);
+        return length;
     }
 
     @Override
@@ -97,10 +106,12 @@ public class SerialChannelImpl implements SerialChannel {
 
     @Override
     public void close() throws IOException {
-        try {
-            serial.close();
-        } catch (Exception cause) {
-            throw new IOException("%s close error!".formatted(this), cause);
+        if (!serial.closePort()) {
+            throw new IOException("%s close failure, code=%d(%d)".formatted(
+                    this,
+                    serial.getLastErrorCode(),
+                    serial.getLastErrorLocation()
+            ));
         }
     }
 
