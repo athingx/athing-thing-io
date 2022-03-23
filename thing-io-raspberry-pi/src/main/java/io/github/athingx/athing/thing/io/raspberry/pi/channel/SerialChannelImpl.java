@@ -1,9 +1,10 @@
 package io.github.athingx.athing.thing.io.raspberry.pi.channel;
 
 import com.fazecast.jSerialComm.SerialPort;
+import io.github.athingx.athing.standard.thing.Thing;
 import io.github.athingx.athing.thing.io.channel.SerialChannel;
 import io.github.athingx.athing.thing.io.source.SerialSource;
-import io.github.athingx.athing.thing.io.source.Source;
+import io.github.oldmanpushcart.jpromisor.FutureListener;
 
 import java.io.EOFException;
 import java.io.IOException;
@@ -14,12 +15,22 @@ import java.nio.ByteBuffer;
  */
 public class SerialChannelImpl implements SerialChannel {
 
+    private final Thing thing;
     private final String _string;
     private final SerialPort serial;
+    private final FutureListener<Void> closeListener = (FutureListener.OnDone<Void>) future -> {
+        try {
+            close();
+        } catch (IOException cause) {
+            // ignore...
+        }
+    };
 
-    public SerialChannelImpl(SerialSource source) throws IOException {
+    public SerialChannelImpl(Thing thing, SerialSource source) throws IOException {
+        this.thing = thing;
         this._string = "%s/channel".formatted(source.getIdentity());
         this.serial = openSerialPort(source);
+        thing.getDestroyFuture().appendListener(closeListener);
     }
 
     private SerialPort openSerialPort(SerialSource source) throws IOException {
@@ -113,6 +124,7 @@ public class SerialChannelImpl implements SerialChannel {
                     serial.getLastErrorLocation()
             ));
         }
+        thing.getDestroyFuture().removeListener(closeListener);
     }
 
 }
