@@ -11,7 +11,7 @@ import io.github.athingx.athing.thing.io.source.Source;
 import java.io.IOException;
 import java.nio.channels.ByteChannel;
 
-public class ThingIoComImpl implements ThingIoCom, ThingLifeCycle {
+class ThingIoComImpl implements ThingIoCom, ThingLifeCycle {
 
     @ThInject
     private Thing thing;
